@@ -38,18 +38,32 @@ async function installDependencies() {
 
 async function startDevServer() {
   // Run `npm run start` to start the Express app
-  await webcontainerInstance.spawn('npm', ['run', 'start']);
-
+  const devProcess = await webcontainerInstance.spawn('npm', ['run', 'start']);
+  devProcess.output.pipeTo(new WritableStream({
+    write(data) {
+      console.log(data);
+    }
+  }));
   // Wait for `server-ready` event
   webcontainerInstance.on('server-ready', (port, url) => {
     iframeEl.src = url;
   });
 }
 
+/** @param {string} content*/
+
+async function writeIndexJS(content) {
+  await webcontainerInstance.fs.writeFile('/index.js', content);
+};
+
 window.addEventListener('load', async () => {
   // Call only once
   textareaEl.value = files['index.js'].file.contents;
 
+  textareaEl.addEventListener('input', (e) => {
+    writeIndexJS(e.currentTarget.value);
+  });
+  
   webcontainerInstance = await WebContainer.boot();
   await webcontainerInstance.mount(files);
 
